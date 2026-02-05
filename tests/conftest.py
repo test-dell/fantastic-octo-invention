@@ -10,7 +10,7 @@ import tempfile
 os.environ['DEBUG'] = 'false'
 os.environ['ADMIN_KEY'] = 'test-admin-key'
 
-from app import app, socketio, init_db, rooms_runtime, rooms_lock
+from app import app, socketio, init_db, rooms_runtime, rooms_lock, admin_attempts, admin_attempts_lock
 
 
 @pytest.fixture(scope='function')
@@ -26,9 +26,15 @@ def test_app():
     # Reinitialize database
     init_db()
 
+    # Clear rate limit state before each test
+    with admin_attempts_lock:
+        admin_attempts.clear()
+
     yield app
 
     # Cleanup
+    with admin_attempts_lock:
+        admin_attempts.clear()
     os.close(db_fd)
     os.unlink(db_path)
 
