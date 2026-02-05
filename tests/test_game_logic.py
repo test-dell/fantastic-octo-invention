@@ -8,7 +8,6 @@ from app import (
     validate_number,
     gen_room_code,
     gen_token,
-    secrets_equal,
 )
 from config import DIGIT_COUNT, MIN_SECRET, MAX_SECRET, ROOM_ID_LENGTH, TOKEN_LENGTH
 
@@ -137,29 +136,3 @@ class TestGenToken:
         """Generated tokens should be unique."""
         tokens = [gen_token() for _ in range(100)]
         assert len(set(tokens)) == 100
-
-
-class TestSecretsEqual:
-    """Tests for constant-time string comparison."""
-
-    def test_equal_strings(self):
-        """Equal strings should return True."""
-        assert secrets_equal("password", "password") is True
-        assert secrets_equal("", "") is True
-        assert secrets_equal("a", "a") is True
-
-    def test_unequal_strings(self):
-        """Unequal strings should return False."""
-        assert secrets_equal("password", "passw0rd") is False
-        assert secrets_equal("abc", "abd") is False
-        assert secrets_equal("a", "b") is False
-
-    def test_different_lengths(self):
-        """Strings of different lengths should return False."""
-        assert secrets_equal("short", "longer") is False
-        assert secrets_equal("", "a") is False
-
-    def test_case_sensitive(self):
-        """Comparison should be case-sensitive."""
-        assert secrets_equal("Password", "password") is False
-        assert secrets_equal("ABC", "abc") is False

@@ -27,8 +27,11 @@ ROOM_ID_LENGTH: int = 6
 TOKEN_LENGTH: int = 32
 """Length of player authentication tokens."""
 
-TURN_TIMEOUT_SECONDS: int = 60
+TURN_TIMEOUT_SECONDS: int = int(os.environ.get('TURN_TIMEOUT', '60'))
 """Time limit for each turn in seconds (0 = disabled)."""
+
+ROOM_INACTIVITY_TIMEOUT_SECONDS: int = int(os.environ.get('ROOM_TIMEOUT', '1200'))
+"""Room inactivity timeout in seconds (default: 20 minutes = 1200 seconds)."""
 
 # =============================================================================
 # Server Settings
@@ -52,16 +55,6 @@ SECRET_KEY: str = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-product
 
 DATABASE_PATH: str = os.environ.get('DB_PATH', 'game.db')
 """Path to the SQLite database file."""
-
-# =============================================================================
-# Admin Settings
-# =============================================================================
-
-ADMIN_KEY: str = os.environ.get('ADMIN_KEY', 'changeme')
-"""Admin panel access key. Change this in production!"""
-
-ADMIN_RATE_LIMIT: int = int(os.environ.get('ADMIN_RATE_LIMIT', '5'))
-"""Maximum admin login attempts per minute."""
 
 # =============================================================================
 # CORS Settings

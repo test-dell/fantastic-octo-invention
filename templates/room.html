@@ -4,83 +4,119 @@
 <div class="room-header">
   <h1>Room {{ room_id }}</h1>
   <div class="room-actions">
-    <button id="exitBtn" class="btn warn">Exit</button>
+    <button id="startBtn" class="btn primary" disabled>Start Game</button>
     <button id="newGameBtn" class="btn success" disabled>New Game</button>
+    <button id="exitBtn" class="btn warn">Exit</button>
     <div class="timer pill">⏱ <span id="timerText">00:00</span></div>
   </div>
 </div>
 <div id="statusBanner" class="status">Connecting...</div>
 <div id="roomRoot" data-room-id="{{ room_id }}"></div>
 
-<div class="grid two">
-  <div class="card" id="p1Card">
-    <h2>Player 1</h2>
-    <label for="p1Secret">Set your number (1000–9999)</label>
-    <div class="row">
-      <input id="p1Secret" type="text" inputmode="numeric" maxlength="4" placeholder="Enter number" />
-      <button id="p1Set" class="btn success">Set</button>
-      <button id="p1ShowHide" class="btn">Show / Hide</button>
-      <button id="p1ResetSecret" class="btn warn" disabled>Reset Secret</button>
-      <span id="p1SecretDisplay" class="secret-display">—</span>
+<!-- Main game area - split layout -->
+<div class="game-container">
+  <!-- Left side: Secret Number Setup -->
+  <div class="game-panel secret-panel">
+    <div class="card" id="p1Card">
+      <h2 id="p1Title">Player 1</h2>
+      <label for="p1Secret">Set your number (1000–9999)</label>
+      <div class="secret-input-wrap">
+        <input id="p1Secret" type="password" inputmode="numeric" maxlength="4" placeholder="Enter number" />
+        <button type="button" class="eye-toggle" id="p1EyeToggle" title="Show/Hide">
+          <svg class="eye-icon eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <svg class="eye-icon eye-closed hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="row">
+        <button id="p1Set" class="btn success">Set</button>
+        <button id="p1ResetSecret" class="btn warn" disabled>Reset Secret</button>
+      </div>
+    </div>
+
+    <div class="card" id="p2Card">
+      <h2 id="p2Title">Player 2</h2>
+      <label for="p2Secret">Set your number (1000–9999)</label>
+      <div class="secret-input-wrap">
+        <input id="p2Secret" type="password" inputmode="numeric" maxlength="4" placeholder="Enter number" />
+        <button type="button" class="eye-toggle" id="p2EyeToggle" title="Show/Hide">
+          <svg class="eye-icon eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <svg class="eye-icon eye-closed hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="row">
+        <button id="p2Set" class="btn success">Set</button>
+        <button id="p2ResetSecret" class="btn warn" disabled>Reset Secret</button>
+      </div>
     </div>
   </div>
 
-  <div class="card" id="p2Card">
-    <h2>Player 2</h2>
-    <label for="p2Secret">Set your number (1000–9999)</label>
-    <div class="row">
-      <input id="p2Secret" type="text" inputmode="numeric" maxlength="4" placeholder="Enter number" />
-      <button id="p2Set" class="btn success">Set</button>
-      <button id="p2ShowHide" class="btn">Show / Hide</button>
-      <button id="p2ResetSecret" class="btn warn" disabled>Reset Secret</button>
-      <span id="p2SecretDisplay" class="secret-display">—</span>
+  <!-- Right side: Guessing Area -->
+  <div class="game-panel guess-panel">
+    <div class="card" id="p1GuessCard">
+      <h2>Player 1 Guess</h2>
+      <div class="guess-input-row">
+        <input id="p1Guess" type="text" inputmode="numeric" maxlength="4" placeholder="Enter guess (1000–9999)" disabled />
+        <button id="p1Submit" class="btn primary" disabled>Submit</button>
+      </div>
+      <h3>Guess History</h3>
+      <div class="history-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Guess</th>
+              <th>Outcome</th>
+            </tr>
+          </thead>
+          <tbody id="p1History"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="p2GuessCard">
+      <h2>Player 2 Guess</h2>
+      <div class="guess-input-row">
+        <input id="p2Guess" type="text" inputmode="numeric" maxlength="4" placeholder="Enter guess (1000–9999)" disabled />
+        <button id="p2Submit" class="btn primary" disabled>Submit</button>
+      </div>
+      <h3>Guess History</h3>
+      <div class="history-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Guess</th>
+              <th>Outcome</th>
+            </tr>
+          </thead>
+          <tbody id="p2History"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="row" style="margin-top: 16px;">
-  <button id="startBtn" class="btn primary" disabled>Start Game</button>
-</div>
-
-<div class="grid two" style="margin-top: 16px;">
-  <div class="card" id="p1GuessCard">
-    <h2>Player 1 Guess</h2>
-    <label for="p1Guess">Your guess (1000–9999)</label>
-    <div class="row">
-      <input id="p1Guess" type="text" inputmode="numeric" maxlength="4" placeholder="Enter guess" />
-      <button id="p1Submit" class="btn primary">Submit Guess</button>
+<!-- Game Over Modal -->
+<div id="gameOverModal" class="modal hidden">
+  <div class="modal-content">
+    <h2 id="modalTitle">Game Over</h2>
+    <p id="modalMessage"></p>
+    <div class="modal-actions">
+      <button id="modalNewGame" class="btn success">New Game</button>
+      <button id="modalExit" class="btn warn">Exit</button>
     </div>
-    <h3 style="margin-top: 12px;">Player 1 Guess History</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Guess</th>
-          <th>Outcome</th>
-        </tr>
-      </thead>
-      <tbody id="p1History"></tbody>
-    </table>
-  </div>
-
-  <div class="card" id="p2GuessCard">
-    <h2>Player 2 Guess</h2>
-    <label for="p2Guess">Your guess (1000–9999)</label>
-    <div class="row">
-      <input id="p2Guess" type="text" inputmode="numeric" maxlength="4" placeholder="Enter guess" />
-      <button id="p2Submit" class="btn primary">Submit Guess</button>
-    </div>
-    <h3 style="margin-top: 12px;">Player 2 Guess History</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Guess</th>
-          <th>Outcome</th>
-        </tr>
-      </thead>
-      <tbody id="p2History"></tbody>
-    </table>
   </div>
 </div>
 {% endblock %}

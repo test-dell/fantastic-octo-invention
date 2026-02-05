@@ -6,13 +6,17 @@
   <div class="card">
     <h2>Create Room</h2>
     <p class="muted">Share the code with your opponent.</p>
+    <label for="createPlayerName">Your Name</label>
+    <input id="createPlayerName" type="text" placeholder="Enter your name" maxlength="20" />
     <button id="createRoomBtn" class="btn primary">Create Room</button>
     <div id="createResult" class="status"></div>
   </div>
   <div class="card">
     <h2>Join Room</h2>
-    <label for="roomCode"></label>
-    <input id="roomCode" type="text" placeholder="Please enter Room Code" />
+    <label for="joinPlayerName">Your Name</label>
+    <input id="joinPlayerName" type="text" placeholder="Enter your name" maxlength="20" />
+    <label for="roomCode">Room Code</label>
+    <input id="roomCode" type="text" placeholder="Enter Room Code" />
     <button id="joinRoomBtn" class="btn success">Join</button>
     <div id="joinResult" class="status"></div>
   </div>
