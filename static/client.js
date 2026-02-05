@@ -44,18 +44,6 @@
   }
 
   /**
-   * Escape HTML to prevent XSS when inserting user content.
-   * @param {string} str - String to escape.
-   * @returns {string} Escaped string.
-   */
-  function escapeHtml(str) {
-    if (!str) return '';
-    var div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  /**
    * Safely set text content of an element.
    * @param {HTMLElement|null} el - Target element.
    * @param {string} text - Text to set.
@@ -76,8 +64,11 @@
     try {
       var socket = io();
       var myPlayer = null;
-      var mySecret = { 1: null, 2: null };
+      var gameStarted = false;
       var timerInterval = null;
+
+      // Get player name from sessionStorage
+      var playerName = sessionStorage.getItem('playerName') || '';
 
       // Cache DOM elements
       var el = {
@@ -88,9 +79,9 @@
         timerText: document.getElementById('timerText'),
         p1SecretInput: document.getElementById('p1Secret'),
         p1Set: document.getElementById('p1Set'),
-        p1ShowHide: document.getElementById('p1ShowHide'),
+        p1EyeToggle: document.getElementById('p1EyeToggle'),
         p1ResetSecret: document.getElementById('p1ResetSecret'),
-        p1SecretDisplay: document.getElementById('p1SecretDisplay'),
+        p1Title: document.getElementById('p1Title'),
         p1Guess: document.getElementById('p1Guess'),
         p1Submit: document.getElementById('p1Submit'),
         p1History: document.getElementById('p1History'),
@@ -98,14 +89,20 @@
         p1GuessCard: document.getElementById('p1GuessCard'),
         p2SecretInput: document.getElementById('p2Secret'),
         p2Set: document.getElementById('p2Set'),
-        p2ShowHide: document.getElementById('p2ShowHide'),
+        p2EyeToggle: document.getElementById('p2EyeToggle'),
         p2ResetSecret: document.getElementById('p2ResetSecret'),
-        p2SecretDisplay: document.getElementById('p2SecretDisplay'),
+        p2Title: document.getElementById('p2Title'),
         p2Guess: document.getElementById('p2Guess'),
         p2Submit: document.getElementById('p2Submit'),
         p2History: document.getElementById('p2History'),
         p2Card: document.getElementById('p2Card'),
-        p2GuessCard: document.getElementById('p2GuessCard')
+        p2GuessCard: document.getElementById('p2GuessCard'),
+        // Modal elements
+        gameOverModal: document.getElementById('gameOverModal'),
+        modalTitle: document.getElementById('modalTitle'),
+        modalMessage: document.getElementById('modalMessage'),
+        modalNewGame: document.getElementById('modalNewGame'),
+        modalExit: document.getElementById('modalExit')
       };
 
       /**
@@ -161,6 +158,14 @@
       }
 
       /**
+       * Lock reset secret buttons after game starts.
+       */
+      function lockResetButtons() {
+        if (el.p1ResetSecret) el.p1ResetSecret.disabled = true;
+        if (el.p2ResetSecret) el.p2ResetSecret.disabled = true;
+      }
+
+      /**
        * Render guess history to a table body.
        * @param {HTMLElement} tbody - Target table body element.
        * @param {Array} items - History items to render.
@@ -168,7 +173,6 @@
       function renderHistory(tbody, items) {
         try {
           if (!tbody) return;
-          // Clear existing content safely
           while (tbody.firstChild) {
             tbody.removeChild(tbody.firstChild);
           }
@@ -177,6 +181,22 @@
           });
         } catch (e) {
           console.error('Error rendering history:', e);
+        }
+      }
+
+      /**
+       * Clear all guess histories.
+       */
+      function clearHistories() {
+        if (el.p1History) {
+          while (el.p1History.firstChild) {
+            el.p1History.removeChild(el.p1History.firstChild);
+          }
+        }
+        if (el.p2History) {
+          while (el.p2History.firstChild) {
+            el.p2History.removeChild(el.p2History.firstChild);
+          }
         }
       }
 
@@ -193,7 +213,6 @@
           var tr = document.createElement('tr');
           var n = idx || (tbody.children.length + 1);
 
-          // Create cells safely using textContent (prevents XSS)
           var tdNum = document.createElement('td');
           tdNum.textContent = String(n);
 
@@ -230,25 +249,67 @@
       }
 
       /**
+       * Update player titles with names from server state.
+       * @param {Object} playerNames - Map of player numbers to names.
+       */
+      function updatePlayerNames(playerNames) {
+        if (!playerNames) return;
+        if (playerNames[1] && el.p1Title) {
+          safeSetText(el.p1Title, playerNames[1]);
+        }
+        if (playerNames[2] && el.p2Title) {
+          safeSetText(el.p2Title, playerNames[2]);
+        }
+      }
+
+      /**
+       * Setup eye toggle functionality for password visibility.
+       * @param {HTMLButtonElement} toggleBtn - The toggle button.
+       * @param {HTMLInputElement} input - The input field.
+       */
+      function setupEyeToggle(toggleBtn, input) {
+        if (!toggleBtn || !input) return;
+
+        toggleBtn.addEventListener('click', function () {
+          var isPassword = input.type === 'password';
+          input.type = isPassword ? 'text' : 'password';
+
+          // Toggle icon visibility
+          var openIcon = toggleBtn.querySelector('.eye-open');
+          var closedIcon = toggleBtn.querySelector('.eye-closed');
+          if (openIcon && closedIcon) {
+            if (isPassword) {
+              openIcon.classList.add('hidden');
+              closedIcon.classList.remove('hidden');
+            } else {
+              openIcon.classList.remove('hidden');
+              closedIcon.classList.add('hidden');
+            }
+          }
+        });
+      }
+
+      /**
        * Handle setting a secret for a player.
        * @param {number} playerNum - Player number (1 or 2).
        * @param {HTMLInputElement} input - Secret input element.
-       * @param {HTMLElement} display - Secret display element.
        * @param {HTMLButtonElement} setBtn - Set button element.
        * @param {HTMLButtonElement} resetBtn - Reset button element.
        */
-      function handleSetSecret(playerNum, input, display, setBtn, resetBtn) {
+      function handleSetSecret(playerNum, input, setBtn, resetBtn) {
         try {
           var val = (input.value || '').trim();
           if (!isValidFourDigit(val)) {
             alert('Enter a valid 4-digit number (' + CONFIG.MIN_SECRET + '–' + CONFIG.MAX_SECRET + ').');
             return;
           }
-          mySecret[playerNum] = val;
-          safeSetText(display, '•••• (hidden)');
+          // Mask the input after setting
+          input.type = 'password';
           input.disabled = true;
           setBtn.disabled = true;
-          resetBtn.disabled = false;
+          if (!gameStarted) {
+            resetBtn.disabled = false;
+          }
           socket.emit('set_secret', { room_id: roomId, player: playerNum, secret: val });
         } catch (e) {
           console.error('Error setting secret:', e);
@@ -260,42 +321,22 @@
        * Handle resetting a secret for a player.
        * @param {number} playerNum - Player number (1 or 2).
        * @param {HTMLInputElement} input - Secret input element.
-       * @param {HTMLElement} display - Secret display element.
        * @param {HTMLButtonElement} setBtn - Set button element.
        * @param {HTMLButtonElement} resetBtn - Reset button element.
        */
-      function handleResetSecret(playerNum, input, display, setBtn, resetBtn) {
+      function handleResetSecret(playerNum, input, setBtn, resetBtn) {
         try {
+          if (gameStarted) {
+            alert('Cannot reset secret after game has started.');
+            return;
+          }
           socket.emit('reset_secret', { room_id: roomId, player: playerNum });
-          mySecret[playerNum] = null;
-          safeSetText(display, '—');
           input.disabled = false;
           setBtn.disabled = false;
           resetBtn.disabled = true;
           input.value = '';
         } catch (e) {
           console.error('Error resetting secret:', e);
-        }
-      }
-
-      /**
-       * Handle toggling secret visibility.
-       * @param {number} playerNum - Player number.
-       * @param {HTMLElement} display - Display element.
-       */
-      function handleShowHide(playerNum, display) {
-        try {
-          if (mySecret[playerNum] === null) return;
-          var isVisible = display.dataset.visible === 'true';
-          if (!isVisible) {
-            safeSetText(display, mySecret[playerNum]);
-            display.dataset.visible = 'true';
-          } else {
-            safeSetText(display, '•••• (hidden)');
-            display.dataset.visible = 'false';
-          }
-        } catch (e) {
-          console.error('Error toggling secret visibility:', e);
         }
       }
 
@@ -319,10 +360,78 @@
         }
       }
 
+      /**
+       * Show the game over modal.
+       * @param {number} winner - The winning player number.
+       * @param {string} message - Game over message.
+       */
+      function showGameOverModal(winner, message) {
+        if (!el.gameOverModal) return;
+        safeSetText(el.modalTitle, 'Player ' + winner + ' Wins!');
+        safeSetText(el.modalMessage, message);
+        el.gameOverModal.classList.remove('hidden');
+      }
+
+      /**
+       * Hide the game over modal.
+       */
+      function hideGameOverModal() {
+        if (el.gameOverModal) {
+          el.gameOverModal.classList.add('hidden');
+        }
+      }
+
+      /**
+       * Reset UI for a new game.
+       */
+      function resetForNewGame() {
+        gameStarted = false;
+        clearHistories();
+        stopLocalTimer();
+
+        // Re-enable secret inputs and buttons
+        if (myPlayer === 1 || myPlayer === null) {
+          if (el.p1SecretInput) {
+            el.p1SecretInput.disabled = false;
+            el.p1SecretInput.value = '';
+            el.p1SecretInput.type = 'password';
+          }
+          if (el.p1Set) el.p1Set.disabled = false;
+          if (el.p1ResetSecret) el.p1ResetSecret.disabled = true;
+        }
+        if (myPlayer === 2 || myPlayer === null) {
+          if (el.p2SecretInput) {
+            el.p2SecretInput.disabled = false;
+            el.p2SecretInput.value = '';
+            el.p2SecretInput.type = 'password';
+          }
+          if (el.p2Set) el.p2Set.disabled = false;
+          if (el.p2ResetSecret) el.p2ResetSecret.disabled = true;
+        }
+
+        // Disable guess inputs
+        enforceInputState(false);
+
+        // Disable start and new game buttons initially
+        if (el.startBtn) el.startBtn.disabled = true;
+        if (el.newGameBtn) el.newGameBtn.disabled = true;
+
+        hideGameOverModal();
+      }
+
+      // Setup eye toggles
+      setupEyeToggle(el.p1EyeToggle, el.p1SecretInput);
+      setupEyeToggle(el.p2EyeToggle, el.p2SecretInput);
+
       // Socket event handlers
       socket.on('connect', function () {
         try {
-          socket.emit('join_room', { room_id: roomId, player: desiredPlayer, token: token });
+          socket.emit('join_room', {
+            room_id: roomId,
+            player: desiredPlayer,
+            token: token,
+            player_name: playerName
+          });
         } catch (e) {
           console.error('Error on connect:', e);
         }
@@ -334,7 +443,9 @@
           if (data.token) {
             localStorage.setItem(CONFIG.STORAGE_PREFIX + data.room_id, data.token);
           }
-          safeSetText(el.status, 'Joined as Player ' + data.player + '. Set your number.');
+          var displayName = data.player_name || ('Player ' + data.player);
+          safeSetText(el.status, 'Joined as ' + displayName + '. Set your number.');
+          el.status.style.display = 'block';
           gateUIForRole(data.player);
           enforceInputState(false);
         } catch (e) {
@@ -354,6 +465,7 @@
       socket.on('system', function (data) {
         try {
           safeSetText(el.status, data.message);
+          el.status.style.display = 'block';
         } catch (e) {
           console.error('Error handling system message:', e);
         }
@@ -361,16 +473,25 @@
 
       socket.on('state', function (state) {
         try {
+          // Update player names
+          if (state.player_names) {
+            updatePlayerNames(state.player_names);
+          }
+
           var ready = state.readiness && state.readiness.p1_set && state.readiness.p2_set;
           if (el.startBtn) el.startBtn.disabled = !ready || state.started;
 
           if (state.started) {
+            gameStarted = true;
+            lockResetButtons();
             safeSetText(el.status, 'Game started. Player ' + state.current_turn + "'s turn.");
+            el.status.style.display = 'block';
             enforceInputState(true, state.current_turn, state.finished);
             if (state.timer_start_ms) startLocalTimer(state.timer_start_ms);
           } else {
             var statusMsg = ready ? 'Both numbers set. Click Start Game.' : 'Waiting for both players to set numbers.';
             safeSetText(el.status, statusMsg);
+            el.status.style.display = 'block';
             enforceInputState(false);
           }
 
@@ -384,13 +505,21 @@
       });
 
       socket.on('secret_ack', function () {
-        // Secret acknowledged - no action needed
+        // Secret acknowledged
+      });
+
+      socket.on('secret_reset_ack', function () {
+        // Secret reset acknowledged
       });
 
       socket.on('game_started', function (data) {
         try {
+          gameStarted = true;
+          lockResetButtons();
           safeSetText(el.status, 'Game started. Player ' + data.current_turn + "'s turn.");
+          el.status.style.display = 'block';
           if (data.timer_start_ms) startLocalTimer(data.timer_start_ms);
+          enforceInputState(true, data.current_turn);
         } catch (e) {
           console.error('Error handling game_started:', e);
         }
@@ -399,6 +528,7 @@
       socket.on('turn', function (data) {
         try {
           safeSetText(el.status, 'Player ' + data.current_turn + "'s turn.");
+          el.status.style.display = 'block';
           enforceInputState(true, data.current_turn);
         } catch (e) {
           console.error('Error handling turn:', e);
@@ -417,17 +547,40 @@
       socket.on('game_over', function (data) {
         try {
           safeSetText(el.status, 'Player ' + data.winner + ' wins! ' + data.message);
+          el.status.style.display = 'block';
           enforceInputState(false);
           stopLocalTimer();
           if (el.newGameBtn) el.newGameBtn.disabled = false;
+          showGameOverModal(data.winner, data.message);
         } catch (e) {
           console.error('Error handling game_over:', e);
+        }
+      });
+
+      socket.on('new_game_started', function () {
+        try {
+          resetForNewGame();
+          safeSetText(el.status, 'New game started. Set your number.');
+          el.status.style.display = 'block';
+        } catch (e) {
+          console.error('Error handling new_game_started:', e);
+        }
+      });
+
+      socket.on('room_expired', function (data) {
+        try {
+          alert(data.message || 'Room has expired due to inactivity.');
+          window.location.href = '/';
+        } catch (e) {
+          console.error('Error handling room_expired:', e);
+          window.location.href = '/';
         }
       });
 
       socket.on('disconnect', function () {
         try {
           safeSetText(el.status, 'Disconnected from server. Refresh to reconnect.');
+          el.status.style.display = 'block';
         } catch (e) {
           console.error('Error handling disconnect:', e);
         }
@@ -436,19 +589,13 @@
       // Event listeners for Player 1
       if (el.p1Set) {
         el.p1Set.addEventListener('click', function () {
-          handleSetSecret(1, el.p1SecretInput, el.p1SecretDisplay, el.p1Set, el.p1ResetSecret);
+          handleSetSecret(1, el.p1SecretInput, el.p1Set, el.p1ResetSecret);
         });
       }
 
       if (el.p1ResetSecret) {
         el.p1ResetSecret.addEventListener('click', function () {
-          handleResetSecret(1, el.p1SecretInput, el.p1SecretDisplay, el.p1Set, el.p1ResetSecret);
-        });
-      }
-
-      if (el.p1ShowHide) {
-        el.p1ShowHide.addEventListener('click', function () {
-          handleShowHide(1, el.p1SecretDisplay);
+          handleResetSecret(1, el.p1SecretInput, el.p1Set, el.p1ResetSecret);
         });
       }
 
@@ -458,28 +605,40 @@
         });
       }
 
+      // Enter key for P1 guess
+      if (el.p1Guess) {
+        el.p1Guess.addEventListener('keypress', function (e) {
+          if (e.key === 'Enter' && !el.p1Submit.disabled) {
+            handleSubmitGuess(1, el.p1Guess);
+          }
+        });
+      }
+
       // Event listeners for Player 2
       if (el.p2Set) {
         el.p2Set.addEventListener('click', function () {
-          handleSetSecret(2, el.p2SecretInput, el.p2SecretDisplay, el.p2Set, el.p2ResetSecret);
+          handleSetSecret(2, el.p2SecretInput, el.p2Set, el.p2ResetSecret);
         });
       }
 
       if (el.p2ResetSecret) {
         el.p2ResetSecret.addEventListener('click', function () {
-          handleResetSecret(2, el.p2SecretInput, el.p2SecretDisplay, el.p2Set, el.p2ResetSecret);
-        });
-      }
-
-      if (el.p2ShowHide) {
-        el.p2ShowHide.addEventListener('click', function () {
-          handleShowHide(2, el.p2SecretDisplay);
+          handleResetSecret(2, el.p2SecretInput, el.p2Set, el.p2ResetSecret);
         });
       }
 
       if (el.p2Submit) {
         el.p2Submit.addEventListener('click', function () {
           handleSubmitGuess(2, el.p2Guess);
+        });
+      }
+
+      // Enter key for P2 guess
+      if (el.p2Guess) {
+        el.p2Guess.addEventListener('keypress', function (e) {
+          if (e.key === 'Enter' && !el.p2Submit.disabled) {
+            handleSubmitGuess(2, el.p2Guess);
+          }
         });
       }
 
@@ -512,10 +671,35 @@
         el.newGameBtn.addEventListener('click', function () {
           try {
             socket.emit('new_game', { room_id: roomId });
-            stopLocalTimer();
-            el.newGameBtn.disabled = true;
+            hideGameOverModal();
           } catch (e) {
             console.error('Error starting new game:', e);
+          }
+        });
+      }
+
+      // Modal button handlers
+      if (el.modalNewGame) {
+        el.modalNewGame.addEventListener('click', function () {
+          try {
+            socket.emit('new_game', { room_id: roomId });
+            hideGameOverModal();
+          } catch (e) {
+            console.error('Error starting new game from modal:', e);
+          }
+        });
+      }
+
+      if (el.modalExit) {
+        el.modalExit.addEventListener('click', function () {
+          try {
+            if (myPlayer) {
+              socket.emit('leave_room', { room_id: roomId, player: myPlayer });
+            }
+            window.location.href = '/';
+          } catch (e) {
+            console.error('Error exiting from modal:', e);
+            window.location.href = '/';
           }
         });
       }
