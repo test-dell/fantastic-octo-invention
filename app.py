@@ -79,6 +79,7 @@ admin_attempts_lock = threading.Lock()
 # Database Helpers
 # =============================================================================
 
+
 @contextmanager
 def get_db_connection() -> Generator[sqlite3.Connection, None, None]:
     """
@@ -174,6 +175,7 @@ init_db()
 # =============================================================================
 # Utility Functions
 # =============================================================================
+
 
 def gen_room_code(length: int = ROOM_ID_LENGTH) -> str:
     """
