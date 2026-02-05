@@ -1,0 +1,29 @@
+# =============================================================================
+# Production Overrides for Docker Compose
+# =============================================================================
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This file contains production-specific settings that override the base
+# docker-compose.yml configuration.
+
+version: '3.8'
+
+services:
+  app:
+    restart: always
+    environment:
+      - DEBUG=false
+      - LOG_LEVEL=WARNING
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

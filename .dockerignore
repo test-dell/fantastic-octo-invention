@@ -1,0 +1,67 @@
+# =============================================================================
+# Docker Ignore File
+# =============================================================================
+# Files and directories to exclude from Docker build context
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist
+build
+eggs
+*.egg
+.pytest_cache
+.mypy_cache
+.coverage
+htmlcov
+coverage.xml
+
+# Virtual environments
+venv
+env
+.env
+.venv
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Testing
+tests
+pytest.ini
+.pytest_cache
+
+# Documentation
+*.md
+!README.md
+UPGRADE_PLAN.md
+SOCKETIO_EVENTS.md
+
+# Development files
+requirements-dev.txt
+docker-compose.prod.yml
+Makefile
+
+# Database (will be created in container)
+*.db
+*.sqlite3
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# CI/CD
+.github
