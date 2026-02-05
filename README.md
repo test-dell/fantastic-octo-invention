@@ -34,12 +34,37 @@ python app.py
 
 The server will start at `http://localhost:5000`
 
-### Docker (Optional)
+### Docker
 
 ```bash
-# Build and run with Docker
+# Using Docker Compose (recommended)
+docker-compose up -d
+
+# Or build and run manually
 docker build -t number-guess-game .
-docker run -p 5000:5000 number-guess-game
+docker run -p 5000:5000 \
+  -e SECRET_KEY=your-secret-key \
+  -e ADMIN_KEY=your-admin-key \
+  number-guess-game
+```
+
+### Using Make
+
+```bash
+# Show all available commands
+make help
+
+# Install and run
+make install
+make run
+
+# Run tests
+make test
+
+# Docker commands
+make docker        # Build and run
+make docker-logs   # View logs
+make docker-stop   # Stop container
 ```
 
 ## Configuration
@@ -97,22 +122,32 @@ See [SOCKETIO_EVENTS.md](SOCKETIO_EVENTS.md) for detailed WebSocket API document
 
 ```
 fantastic-octo-invention/
-├── app.py              # Main Flask/SocketIO application
-├── config.py           # Configuration constants
-├── requirements.txt    # Production dependencies
-├── requirements-dev.txt # Development dependencies
-├── templates/          # Jinja2 HTML templates
-│   ├── base.html       # Base template with theming
-│   ├── index.html      # Home page
-│   ├── room.html       # Game room
-│   └── admin.html      # Admin panel
-├── static/             # Static assets
-│   ├── client.js       # Game client logic
-│   ├── index.js        # Home page logic
-│   ├── room.js         # Room page bootstrap
-│   └── style.css       # Styles
-└── tests/              # Test suite
+├── app.py                  # Main Flask/SocketIO application
+├── config.py               # Configuration constants
+├── requirements.txt        # Base dependencies
+├── requirements-prod.txt   # Production dependencies (Gunicorn)
+├── requirements-dev.txt    # Development dependencies
+├── Dockerfile              # Container image definition
+├── docker-compose.yml      # Docker Compose configuration
+├── docker-compose.prod.yml # Production overrides
+├── Makefile                # Common commands
+├── .github/
+│   └── workflows/
+│       └── ci.yml          # CI/CD pipeline
+├── templates/              # Jinja2 HTML templates
+│   ├── base.html           # Base template with theming
+│   ├── index.html          # Home page
+│   ├── room.html           # Game room
+│   └── admin.html          # Admin panel
+├── static/                 # Static assets
+│   ├── client.js           # Game client logic
+│   ├── index.js            # Home page logic
+│   ├── room.js             # Room page bootstrap
+│   └── style.css           # Styles
+└── tests/                  # Test suite
+    ├── conftest.py         # Pytest fixtures
     ├── test_game_logic.py
+    ├── test_http_routes.py
     └── test_socketio_events.py
 ```
 
@@ -154,12 +189,52 @@ mypy app.py config.py
 black .
 ```
 
+## Production Deployment
+
+### Using Docker Compose (Recommended)
+
+```bash
+# Create .env file with production settings
+cat > .env << EOF
+SECRET_KEY=your-secure-random-key-here
+ADMIN_KEY=your-secure-admin-key-here
+CORS_ORIGINS=https://yourdomain.com
+LOG_LEVEL=WARNING
+EOF
+
+# Deploy with production settings
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# View logs
+docker-compose logs -f
+```
+
+### Using Gunicorn Directly
+
+```bash
+# Install production dependencies
+pip install -r requirements-prod.txt
+
+# Run with Gunicorn
+gunicorn --worker-class eventlet -w 1 -b 0.0.0.0:5000 app:app
+```
+
+### CI/CD Pipeline
+
+The repository includes a GitHub Actions workflow that:
+
+1. **Lint** - Checks code quality with flake8
+2. **Test** - Runs pytest with coverage
+3. **Build** - Builds and tests Docker image
+4. **Deploy** - Ready for production deployment (manual trigger)
+
 ## Security Considerations
 
 - **Change default keys**: Always set `SECRET_KEY` and `ADMIN_KEY` in production
 - **CORS**: Configure `CORS_ORIGINS` to only allow your domain
 - **HTTPS**: Use a reverse proxy (nginx) with SSL in production
 - **Rate limiting**: Built-in rate limiting for admin endpoints
+- **Non-root user**: Docker container runs as non-root user
 
 ## License
 
