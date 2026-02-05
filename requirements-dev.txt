@@ -1,0 +1,18 @@
+# Development dependencies
+# Install with: pip install -r requirements-dev.txt
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-asyncio>=0.21.0
+
+# Code quality
+flake8>=6.1.0
+black>=23.9.0
+mypy>=1.5.0
+
+# Type stubs
+types-Flask>=1.1.0
+
+# Testing utilities
+python-socketio[client]>=5.9.0
