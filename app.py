@@ -16,7 +16,7 @@ import time
 from contextlib import contextmanager
 from datetime import datetime
 from functools import wraps
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Tuple
 
 from flask import Flask, abort, jsonify, render_template, request, redirect, url_for
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -78,6 +78,7 @@ admin_attempts_lock = threading.Lock()
 # =============================================================================
 # Database Helpers
 # =============================================================================
+
 
 @contextmanager
 def get_db_connection() -> Generator[sqlite3.Connection, None, None]:
@@ -174,6 +175,7 @@ init_db()
 # =============================================================================
 # Utility Functions
 # =============================================================================
+
 
 def gen_room_code(length: int = ROOM_ID_LENGTH) -> str:
     """

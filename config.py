@@ -67,6 +67,7 @@ ADMIN_RATE_LIMIT: int = int(os.environ.get('ADMIN_RATE_LIMIT', '5'))
 # CORS Settings
 # =============================================================================
 
+
 def get_cors_origins() -> List[str]:
     """
     Get allowed CORS origins from environment.
@@ -81,6 +82,7 @@ def get_cors_origins() -> List[str]:
             return ['*']
         return ['http://localhost:5000', 'http://127.0.0.1:5000']
     return [o.strip() for o in origins.split(',') if o.strip()]
+
 
 CORS_ORIGINS: List[str] = get_cors_origins()
 """List of allowed CORS origins for Socket.IO connections."""
